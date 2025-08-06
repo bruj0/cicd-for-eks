@@ -56,8 +56,6 @@ The home page (`/`) includes an interactive web interface that allows users to:
 │       └── templates/        # Kubernetes resource templates
 ├── .gitignore               # Git ignore file
 ├── .pre-commit-config.yaml  # Pre-commit hooks configuration
-├── CI-CD-README.md          # CI/CD pipeline documentation
-├── DEPLOYMENT-README.md     # Deployment specific documentation
 └── README.md                # This file
 ```
 

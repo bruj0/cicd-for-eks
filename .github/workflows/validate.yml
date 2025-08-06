@@ -1,13 +1,10 @@
-name: Validate Application
+name: Test Application
 
 on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
+  workflow_call:
 
 jobs:
-  validate:
+  test:
     runs-on: ubuntu-latest
     
     steps:
@@ -122,9 +119,9 @@ jobs:
         # Scan dependencies for known vulnerabilities
         safety check --json || echo "WARNING: Security scan completed with warnings"
 
-    - name: Validation Summary
+    - name: Test Summary
       run: |
-        echo "## Validation Summary" >> $GITHUB_STEP_SUMMARY
+        echo "## Test Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Code Quality**: Linting and formatting checks passed" >> $GITHUB_STEP_SUMMARY
         echo "**Application Tests**: All endpoints responding correctly" >> $GITHUB_STEP_SUMMARY

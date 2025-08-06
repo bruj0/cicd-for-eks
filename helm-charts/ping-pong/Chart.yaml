@@ -1,0 +1,17 @@
+apiVersion: v2
+name: ping-pong
+description: A simple Flask application for testing CICD pipeline to EKS
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - flask
+  - python
+  - eks
+  - cicd
+home: https://github.com/bruj0/infra-for-eks
+sources:
+  - https://github.com/bruj0/infra-for-eks
+maintainers:
+  - name: bruj0
+    email: bruj0@example.com

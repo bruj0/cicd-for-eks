@@ -1,0 +1,60 @@
+# Development environment values for ping-pong application
+# This file extends the base values.yaml with dev-specific configurations
+
+# Use fewer replicas in dev
+replicaCount: 1
+
+# Enable debug mode for development
+app:
+  debug: true
+
+# Lower resource requirements for dev
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Enable autoscaling with lower thresholds for testing
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 70
+
+# Development-specific environment variables
+env:
+  - name: APP_NAME
+    value: "ping-pong-dev"
+  - name: PORT
+    value: "5000"
+  - name: HOST
+    value: "0.0.0.0"
+  - name: DEBUG
+    value: "true"
+  - name: ENVIRONMENT
+    value: "development"
+
+# ALB configuration for development
+# The ALB will provide its own hostname automatically
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "2"
+    # Add tags for dev environment
+    alb.ingress.kubernetes.io/tags: Environment=dev,Application=ping-pong
+  hosts: []  # Let ALB assign the hostname
+  paths:
+    - path: /
+      pathType: Prefix
+  tls: []

@@ -1,0 +1,14 @@
+[project]
+name = "ping-pong"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "flask==2.3.3",
+    "gunicorn==21.2.0",
+    "python-dateutil==2.8.2",
+    "requests==2.31.0",
+    "uvicorn>=0.35.0",
+    "werkzeug==2.3.7",
+]

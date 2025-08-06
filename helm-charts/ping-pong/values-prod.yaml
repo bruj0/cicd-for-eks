@@ -1,0 +1,84 @@
+# Production environment values for ping-pong application
+# This file extends the base values.yaml with production-specific configurations
+
+# More replicas for production
+replicaCount: 3
+
+# Production image configuration
+image:
+  pullPolicy: Always
+  tag: "stable"
+
+# Production security and resource settings
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+# Enable autoscaling for production workloads
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Production environment variables
+env:
+  - name: APP_NAME
+    value: "ping-pong-prod"
+  - name: PORT
+    value: "5000"
+  - name: HOST
+    value: "0.0.0.0"
+  - name: DEBUG
+    value: "false"
+  - name: ENVIRONMENT
+    value: "production"
+
+# Production ALB configuration
+ingress:
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "30"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "3"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
+    # Production tags and SSL configuration
+    alb.ingress.kubernetes.io/tags: Environment=prod,Application=ping-pong
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # Uncomment and configure for SSL in production
+    # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:region:account:certificate/cert-id
+    # alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+  hosts: []  # Let ALB assign the hostname
+  paths:
+    - path: /
+      pathType: Prefix
+  tls: []
+
+# Production-specific pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Node affinity for production (spread across AZs)
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - ping-pong
+        topologyKey: topology.kubernetes.io/zone

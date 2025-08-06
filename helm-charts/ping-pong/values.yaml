@@ -2,11 +2,18 @@
 replicaCount: 2
 
 image:
-  repository: ping-pong
+  repository: ghcr.io/bruj0/cicd-for-eks/ping-pong
   pullPolicy: IfNotPresent
   tag: "latest"
 
 imagePullSecrets: []
+
+# GHCR PAT Authentication
+ghcr:
+  enabled: true
+  secretName: "ghcr-secret"
+  username: ""
+  token: ""
 nameOverride: ""
 fullnameOverride: ""
 
@@ -46,6 +53,7 @@ ingress:
     alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
     alb.ingress.kubernetes.io/healthy-threshold-count: "2"
     alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
+
   hosts: []
   paths:
     - path: /

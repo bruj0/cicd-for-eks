@@ -1,0 +1,153 @@
+name: Deploy
+
+on:
+  workflow_call:
+    inputs:
+      image-tag:
+        description: 'Docker image tag to deploy'
+        required: true
+        type: string
+      build-type:
+        description: 'Build type (release or development)'
+        required: true
+        type: string
+      branch-name:
+        description: 'Branch name for namespace'
+        required: false
+        type: string
+      pr-number:
+        description: 'PR number for development builds'
+        required: false
+        type: string
+    secrets:
+      GHCR_PAT:
+        description: 'GitHub Container Registry Personal Access Token'
+        required: true
+      KUBECONFIG:
+        description: 'Kubernetes configuration for deployment'
+        required: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/bruj0/cicd-for-eks/ping-pong
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Helm
+      uses: azure/setup-helm@v4
+      with:
+        version: '3.13.0'
+
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: '1.28.0'
+
+    - name: Configure kubectl
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+
+    - name: Determine deployment parameters
+      id: deploy-params
+      run: |
+        if [[ "${{ inputs.build-type }}" == "release" ]]; then
+          NAMESPACE="default"
+          RELEASE_NAME="ping-pong"
+          VALUES_FILE="values.yaml"
+          echo "Deploying release to production namespace: ${NAMESPACE}"
+        else
+          # For PR builds, use branch name as namespace
+          BRANCH_CLEAN=$(echo "${{ inputs.branch-name }}" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+          NAMESPACE="${BRANCH_CLEAN}"
+          PR_NUM="${{ inputs.pr-number }}"
+          if [[ -n "${PR_NUM}" ]]; then
+            RELEASE_NAME="ping-pong-pr-${PR_NUM}"
+          else
+            RELEASE_NAME="ping-pong-${BRANCH_CLEAN}"
+          fi
+          VALUES_FILE="values-dev.yaml"
+          echo "Deploying PR to development namespace: ${NAMESPACE}"
+        fi
+
+        echo "namespace=${NAMESPACE}" >> $GITHUB_OUTPUT
+        echo "release-name=${RELEASE_NAME}" >> $GITHUB_OUTPUT
+        echo "values-file=${VALUES_FILE}" >> $GITHUB_OUTPUT
+
+    - name: Create namespace
+      run: |
+        kubectl create namespace ${{ steps.deploy-params.outputs.namespace }} --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Deploy with Helm
+      run: |
+        cd helm-charts/ping-pong
+
+        helm upgrade --install ${{ steps.deploy-params.outputs.release-name }} . \
+          --namespace ${{ steps.deploy-params.outputs.namespace }} \
+          --values ${{ steps.deploy-params.outputs.values-file }} \
+          --set image.repository=${{ env.IMAGE_NAME }} \
+          --set image.tag=${{ inputs.image-tag }} \
+          --set ghcr.enabled=true \
+          --set ghcr.username=${{ github.actor }} \
+          --set ghcr.token=${{ secrets.GHCR_PAT }} \
+          --wait \
+          --timeout=10m
+
+    - name: Verify deployment
+      run: |
+        kubectl get pods -n ${{ steps.deploy-params.outputs.namespace }} -l app.kubernetes.io/name=ping-pong
+        kubectl get services -n ${{ steps.deploy-params.outputs.namespace }} -l app.kubernetes.io/name=ping-pong
+
+        # Wait for pods to be ready
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=ping-pong -n ${{ steps.deploy-params.outputs.namespace }} --timeout=300s
+
+    - name: Get deployment info
+      id: deployment-info
+      run: |
+        INGRESS_HOST=$(kubectl get ingress -n ${{ steps.deploy-params.outputs.namespace }} -o jsonpath='{.items[0].status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "Not available")
+        SERVICE_IP=$(kubectl get service -n ${{ steps.deploy-params.outputs.namespace }} -l app.kubernetes.io/name=ping-pong -o jsonpath='{.items[0].spec.clusterIP}' 2>/dev/null || echo "Not available")
+
+        echo "ingress-host=${INGRESS_HOST}" >> $GITHUB_OUTPUT
+        echo "service-ip=${SERVICE_IP}" >> $GITHUB_OUTPUT
+
+    - name: Deployment summary
+      run: |
+        echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Image:** \`${{ env.IMAGE_NAME }}:${{ inputs.image-tag }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Namespace:** \`${{ steps.deploy-params.outputs.namespace }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Release:** \`${{ steps.deploy-params.outputs.release-name }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Build Type:** \`${{ inputs.build-type }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [[ "${{ inputs.build-type }}" == "release" ]]; then
+          echo "**Production Deployment** - Released to default namespace" >> $GITHUB_STEP_SUMMARY
+        else
+          PR_NUM="${{ inputs.pr-number }}"
+          if [[ -n "${PR_NUM}" ]]; then
+            echo "**Development Deployment** - PR #${PR_NUM} in namespace \`${{ steps.deploy-params.outputs.namespace }}\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "**Development Deployment** - Branch \`${{ inputs.branch-name }}\` in namespace \`${{ steps.deploy-params.outputs.namespace }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+        fi
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Deployment Details" >> $GITHUB_STEP_SUMMARY
+        echo "- **Service IP:** \`${{ steps.deployment-info.outputs.service-ip }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- **Ingress Host:** \`${{ steps.deployment-info.outputs.ingress-host }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Verification Commands" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        echo "kubectl get pods -n ${{ steps.deploy-params.outputs.namespace }}" >> $GITHUB_STEP_SUMMARY
+        echo "kubectl logs -n ${{ steps.deploy-params.outputs.namespace }} -l app.kubernetes.io/name=ping-pong" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

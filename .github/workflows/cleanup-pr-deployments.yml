@@ -1,0 +1,197 @@
+name: Cleanup PR Deployments
+
+on:
+  schedule:
+    # Run daily at 8pm CEST (18:00 UTC in winter, 19:00 UTC in summer)
+    # Using 19:00 UTC to cover CEST (summer time)
+    - cron: '0 19 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run - only show what would be deleted'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/bruj0/cicd-for-eks/ping-pong
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v4
+      with:
+        version: 'v1.31.0'
+
+    - name: Setup Helm
+      uses: azure/setup-helm@v4
+      with:
+        version: '3.13.0'
+
+    - name: Configure kubectl
+      run: |
+        mkdir -p $HOME/.kube
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+        chmod 600 $HOME/.kube/config
+
+    - name: Find PR deployments to cleanup
+      id: find-deployments
+      run: |
+        echo "Finding Helm releases for PR deployments..."
+
+        # Get all helm releases with pr- prefix
+        PR_RELEASES=$(helm list --all-namespaces -o json | jq -r '.[] | select(.name | startswith("ping-pong-pr-")) | .name + ":" + .namespace')
+
+        echo "Found PR releases:"
+        echo "$PR_RELEASES"
+
+        # Initialize cleanup lists
+        RELEASES_TO_CLEANUP=""
+        NAMESPACES_TO_CLEANUP=""
+
+        # Process each PR release - clean up all PR deployments
+        while IFS=: read -r release_name namespace; do
+          if [[ -n "$release_name" ]]; then
+            # Extract PR number from release name (format: ping-pong-pr-123)
+            if [[ "$release_name" =~ ping-pong-pr-([0-9]+) ]]; then
+              PR_NUM="${BASH_REMATCH[1]}"
+
+              # Mark all PR deployments for cleanup
+              echo "Marking $release_name in namespace $namespace for cleanup"
+              RELEASES_TO_CLEANUP="$RELEASES_TO_CLEANUP$release_name:$namespace\n"
+
+              # Check if namespace should be cleaned up (only contains this release)
+              RELEASES_IN_NS=$(helm list -n "$namespace" -o json | jq -r '.[].name' | wc -l)
+              if [[ "$RELEASES_IN_NS" -eq 1 ]]; then
+                NAMESPACES_TO_CLEANUP="$NAMESPACES_TO_CLEANUP$namespace\n"
+              fi
+            fi
+          fi
+        done <<< "$PR_RELEASES"
+
+        # Remove empty lines and save to outputs
+        RELEASES_TO_CLEANUP=$(echo -e "$RELEASES_TO_CLEANUP" | grep -v '^$' || true)
+        NAMESPACES_TO_CLEANUP=$(echo -e "$NAMESPACES_TO_CLEANUP" | grep -v '^$' || true)
+
+        echo "releases-to-cleanup<<EOF" >> $GITHUB_OUTPUT
+        echo "$RELEASES_TO_CLEANUP" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+        echo "namespaces-to-cleanup<<EOF" >> $GITHUB_OUTPUT
+        echo "$NAMESPACES_TO_CLEANUP" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Display cleanup plan
+      run: |
+        echo "## Cleanup Plan" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [[ -n "${{ steps.find-deployments.outputs.releases-to-cleanup }}" ]]; then
+          echo "### Helm Releases to Cleanup (All PRs)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          while IFS=: read -r release_name namespace; do
+            if [[ -n "$release_name" ]]; then
+              echo "- **$release_name** in namespace \`$namespace\`" >> $GITHUB_STEP_SUMMARY
+            fi
+          done <<< "${{ steps.find-deployments.outputs.releases-to-cleanup }}"
+          echo "" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "### No PR deployments to cleanup" >> $GITHUB_STEP_SUMMARY
+          echo "No PR deployments found." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        if [[ -n "${{ steps.find-deployments.outputs.namespaces-to-cleanup }}" ]]; then
+          echo "### Namespaces to Cleanup" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          while read -r namespace; do
+            if [[ -n "$namespace" ]]; then
+              echo "- \`$namespace\`" >> $GITHUB_STEP_SUMMARY
+            fi
+          done <<< "${{ steps.find-deployments.outputs.namespaces-to-cleanup }}"
+          echo "" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+          echo "### Dry Run Mode" >> $GITHUB_STEP_SUMMARY
+          echo "This is a dry run - no actual cleanup will be performed." >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Cleanup Helm releases
+      if: steps.find-deployments.outputs.releases-to-cleanup != '' && inputs.dry_run != 'true'
+      run: |
+        echo "Cleaning up Helm releases for all PRs..."
+
+        while IFS=: read -r release_name namespace; do
+          if [[ -n "$release_name" ]]; then
+            echo "Uninstalling $release_name from namespace $namespace..."
+            if helm uninstall "$release_name" --namespace "$namespace"; then
+              echo "Successfully uninstalled $release_name"
+            else
+              echo "Failed to uninstall $release_name"
+            fi
+          fi
+        done <<< "${{ steps.find-deployments.outputs.releases-to-cleanup }}"
+
+    - name: Cleanup empty namespaces
+      if: steps.find-deployments.outputs.namespaces-to-cleanup != '' && inputs.dry_run != 'true'
+      run: |
+        echo "Cleaning up empty namespaces..."
+
+        while read -r namespace; do
+          if [[ -n "$namespace" && "$namespace" != "default" && "$namespace" != "kube-system" && "$namespace" != "kube-public" ]]; then
+            echo "Checking if namespace $namespace is empty..."
+
+            # Check if namespace has any remaining resources
+            RESOURCES=$(kubectl api-resources --verbs=list --namespaced -o name | xargs -n 1 kubectl get --show-kind --ignore-not-found -n "$namespace" 2>/dev/null | grep -v "No resources found" | wc -l)
+
+            if [[ "$RESOURCES" -eq 0 ]]; then
+              echo "Deleting empty namespace $namespace..."
+              if kubectl delete namespace "$namespace"; then
+                echo "Successfully deleted namespace $namespace"
+              else
+                echo "Failed to delete namespace $namespace"
+              fi
+            else
+              echo "Namespace $namespace still has resources, skipping deletion"
+            fi
+          fi
+        done <<< "${{ steps.find-deployments.outputs.namespaces-to-cleanup }}"
+
+    - name: Summary
+      run: |
+        echo "## Cleanup Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [[ "${{ inputs.dry_run }}" == "true" ]]; then
+          echo "**Mode:** Dry Run (no changes made)" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "**Mode:** Live Cleanup" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Time:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+
+        if [[ -n "${{ steps.find-deployments.outputs.releases-to-cleanup }}" ]]; then
+          CLEANUP_COUNT=$(echo "${{ steps.find-deployments.outputs.releases-to-cleanup }}" | wc -l)
+          echo "**Releases processed:** $CLEANUP_COUNT" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "**Releases processed:** 0" >> $GITHUB_STEP_SUMMARY
+        fi
+
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "- This workflow runs automatically every day at 8pm CEST" >> $GITHUB_STEP_SUMMARY
+        echo "- To manually reinstall a PR deployment, use the 'Reinstall PR Deployment' workflow" >> $GITHUB_STEP_SUMMARY
+        echo "- To run cleanup manually, use the 'workflow_dispatch' trigger" >> $GITHUB_STEP_SUMMARY

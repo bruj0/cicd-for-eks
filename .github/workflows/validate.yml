@@ -11,6 +11,24 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Set up cache for pip
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('src/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Set up cache for pre-commit
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/pre-commit
+        key: ${{ runner.os }}-pre-commit-${{ hashFiles('src/.pre-commit-config.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pre-commit-
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:

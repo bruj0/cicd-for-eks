@@ -180,13 +180,6 @@ flowchart TD
         TargetCluster
     end
 
-    style PullReq fill:#e1f5fe
-    style Release fill:#e8f5e8
-    style ManualDeploy fill:#fff3e0
-    style FailPipeline fill:#ffebee
-    style ProdCluster fill:#e8f5e8
-    style DevCluster fill:#e3f2fd
-    style TargetCluster fill:#f3e5f5
 ```
 
 #### Main Pipeline (`build-test-deploy.yml`)

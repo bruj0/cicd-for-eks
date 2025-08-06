@@ -22,27 +22,33 @@ The home page (`/`) includes an interactive web interface that allows users to:
 ## Project Structure
 
 ```
-/src/
-├── main.py              # Main Flask application
-├── requirements.txt     # Python dependencies
-├── Dockerfile          # Container image definition
-├── .dockerignore       # Docker ignore file
-├── test_app.py         # Simple test script
-├── Makefile           # Development commands
-├── README.md          # This file
-└── html/
-    └── index.html      # Interactive web interface template
-
-/helm-charts/ping-pong/
-├── Chart.yaml                    # Helm chart metadata
-├── values.yaml                   # Default configuration values
-└── templates/
-    ├── _helpers.tpl              # Template helpers
-    ├── deployment.yaml           # Kubernetes deployment
-    ├── service.yaml              # Kubernetes service
-    ├── ingress.yaml              # Kubernetes ingress
-    ├── serviceaccount.yaml       # Service account
-    └── hpa.yaml                  # Horizontal Pod Autoscaler
+/
+├── .github/workflows/           # GitHub Actions workflows
+│   ├── docker-build.yml        # Docker build and push
+│   ├── validate.yml            # Code validation and testing
+│   └── semantic-release.yml    # Automated versioning
+├── src/                        # Application source code
+│   ├── main.py                 # Main Flask application
+│   ├── requirements.txt        # Python dependencies
+│   ├── Dockerfile             # Container image definition
+│   ├── .dockerignore          # Docker ignore file
+│   ├── Makefile               # Development commands
+│   ├── pyproject.toml         # Project configuration
+│   ├── wsgi.py                # WSGI entry point
+│   ├── gunicorn.conf.py       # Gunicorn configuration
+│   ├── entrypoint.sh          # Container entrypoint
+│   └── html/
+│       └── index.html         # Interactive web interface template
+├── helm-charts/               # Kubernetes deployment charts
+│   ├── Makefile              # Helm deployment commands
+│   └── ping-pong/           # Main application chart
+│       ├── Chart.yaml        # Helm chart metadata
+│       ├── values.yaml       # Default configuration values
+│       └── templates/        # Kubernetes resource templates
+├── GitVersion.yml            # Semantic versioning configuration
+├── .releaserc.json          # Semantic release configuration
+├── CI-CD-README.md          # CI/CD pipeline documentation
+└── README.md                # This file
 ```
 
 ## Local Development
@@ -56,17 +62,41 @@ The home page (`/`) includes an interactive web interface that allows users to:
 
 1. **Build Docker image:**
    ```bash
-   make docker-build
+   cd src && make docker-build
    ```
 
 2. **Run Docker container:**
    ```bash
-   make docker-run
+   cd src && make docker-run
    ```
 
 3. **Test with Docker:**
    ```bash
-   make docker-test
+   cd src && make docker-test
+   ```
+
+### Manual Docker Commands
+
+1. **Build image:**
+   ```bash
+   docker build -t ping-pong:latest ./src
+   ```
+
+2. **Run container:**
+   ```bash
+   docker run -p 5000:5000 ping-pong:latest
+   ```
+
+### Helm Deployment
+
+1. **Deploy to development:**
+   ```bash
+   cd helm-charts && make install-dev
+   ```
+
+2. **Deploy to production:**
+   ```bash
+   cd helm-charts && make install-prod
    ```
 
 ## API Endpoints

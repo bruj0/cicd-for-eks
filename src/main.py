@@ -9,9 +9,6 @@ import logging
 from datetime import datetime
 from flask import Flask, request, jsonify, render_template
 
-# Initialize Flask app
-app = Flask(__name__, template_folder='html')
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -25,29 +22,78 @@ HOST = os.environ.get('HOST', '0.0.0.0')
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 APP_NAME = os.environ.get('APP_NAME', 'ping-pong')
 
-@app.route('/', methods=['GET'])
-def home():
-    """Serve the home page with EKS cluster status."""
-    logger.info("Home page accessed")
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+def create_app():
+    """Create and configure the Flask application."""
+    app = Flask(__name__, template_folder='html')
     
-    return render_template(
-        'index.html',
-        app_name=APP_NAME,
-        current_time=current_time
-    )
+    @app.route('/', methods=['GET'])
+    def home():
+        """Serve the home page with EKS cluster status."""
+        logger.info("Home page accessed")
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+        
+        return render_template(
+            'index.html',
+            app_name=APP_NAME,
+            current_time=current_time
+        )
 
-@app.route('/ping', methods=['GET'])
-def ping():
-    """Health check endpoint that responds with 'pong'."""
-    logger.info("Ping endpoint accessed")
-    return "pong"
+    @app.route('/ping', methods=['GET'])
+    def ping():
+        """Health check endpoint that responds with 'pong'."""
+        logger.info("Ping endpoint accessed")
+        return jsonify({"message": "pong"})
 
-@app.route('/hello', methods=['POST'])
-def hello():
-    """
-    Endpoint that accepts JSON with name and returns personalized message.
-    Expected JSON: {"name": "your_name"}
+    @app.route('/hello', methods=['POST'])
+    def hello():
+        """
+        Endpoint that accepts JSON with name and returns personalized message.
+        Expected JSON: {"name": "your_name"}
+        """
+        logger.info("Hello endpoint accessed")
+        
+        try:
+            data = request.get_json()
+            
+            if not data or 'name' not in data:
+                return jsonify({
+                    "error": "Missing 'name' field in JSON payload"
+                }), 400
+            
+            name = data['name']
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
+            
+            response = {
+                "message": f"Hello {name}, current time is {current_time}"
+            }
+            
+            logger.info(f"Hello response sent for name: {name}")
+            return jsonify(response)
+            
+        except Exception as e:
+            logger.error(f"Error processing hello request: {str(e)}")
+            return jsonify({
+                "error": "Internal server error"
+            }), 500
+
+    @app.route('/health', methods=['GET'])
+    def health():
+        """Health check endpoint for Kubernetes probes."""
+        logger.info("Health check endpoint accessed")
+        
+        health_data = {
+            "status": "healthy",
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
+            "service": APP_NAME,
+            "version": "1.0.0"
+        }
+        
+        return jsonify(health_data)
+
+    return app
+
+# Initialize Flask app
+app = create_app()
     Returns: {"message": "Hello your_name, current time is timestamp"}
     """
     logger.info("Hello endpoint accessed")

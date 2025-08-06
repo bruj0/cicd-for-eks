@@ -6,5 +6,51 @@ dist/
 wheels/
 *.egg-info
 tmp/
+
 # Virtual environments
 .venv
+venv/
+env/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Terraform files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Testing
+coverage/
+.coverage
+.pytest_cache/
+
+# Docker
+.dockerignore
+
+# Kubernetes
+kubeconfig
+
+# CI/CD
+.github/workflows/secrets/
+
+# Backup files
+*.bak
+*.backup

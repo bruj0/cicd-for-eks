@@ -1,0 +1,88 @@
+---
+# Source: ping-pong/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ping-pong
+  labels:
+    helm.sh/chart: ping-pong-0.1.0
+    app.kubernetes.io/name: ping-pong
+    app.kubernetes.io/instance: ping-pong
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ping-pong
+      app.kubernetes.io/instance: ping-pong
+  template:
+    metadata:
+      annotations:
+      labels:
+        app.kubernetes.io/name: ping-pong
+        app.kubernetes.io/instance: ping-pong
+    spec:
+      imagePullSecrets:
+        - name: ghcr-secret
+      serviceAccountName: ping-pong
+      securityContext:
+        fsGroup: 1001
+      containers:
+        - name: ping-pong
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 1001
+          image: "ghcr.io/bruj0/cicd-for-eks/ping-pong:latest"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5000
+              protocol: TCP
+          env:
+            - name: APP_NAME
+              value: ping-pong
+            - name: PORT
+              value: "5000"
+            - name: HOST
+              value: 0.0.0.0
+            - name: DEBUG
+              value: "false"
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          resources:
+            limits:
+              cpu: 500m
+              memory: 512Mi
+            requests:
+              cpu: 250m
+              memory: 256Mi
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: var-cache
+              mountPath: /var/cache
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: var-cache
+          emptyDir: {}

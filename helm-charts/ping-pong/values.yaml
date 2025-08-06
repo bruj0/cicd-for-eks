@@ -14,6 +14,7 @@ ghcr:
   secretName: "ghcr-secret"
   username: ""
   token: ""
+
 nameOverride: ""
 fullnameOverride: ""
 

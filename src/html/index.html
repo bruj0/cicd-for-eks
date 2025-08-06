@@ -129,7 +129,7 @@
         <h1>{{ app_name }}</h1>
         <div class="status">EKS Cluster is running successfully!</div>
         <p>This is a simple Flask application deployed on Kubernetes.</p>
-        
+
         <div class="endpoints">
             <h3>Available Endpoints:</h3>
             <div class="endpoint">
@@ -148,7 +148,7 @@
 
         <div class="interactive-section">
             <h3>Test the API Endpoints</h3>
-            
+
             <!-- Ping Test -->
             <div class="test-form">
                 <h4>Test /ping endpoint</h4>
@@ -174,7 +174,7 @@
                 <div id="health-response" class="response"></div>
             </div>
         </div>
-        
+
         <div class="timestamp">
             Current server time: {{ current_time }}
         </div>
@@ -203,7 +203,7 @@
             try {
                 const response = await fetch(`${baseUrl}/ping`);
                 const text = await response.text();
-                
+
                 if (response.ok) {
                     displayResponse('ping-response', `Success: ${text}`);
                 } else {
@@ -218,7 +218,7 @@
         async function testHello() {
             const nameInput = document.getElementById('hello-name');
             const name = nameInput.value.trim();
-            
+
             if (!name) {
                 displayResponse('hello-response', 'Please enter a name', true);
                 return;
@@ -233,9 +233,9 @@
                     },
                     body: JSON.stringify({ name: name })
                 });
-                
+
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     displayResponse('hello-response', `${data.message}`);
                 } else {
@@ -252,7 +252,7 @@
             try {
                 const response = await fetch(`${baseUrl}/health`);
                 const data = await response.json();
-                
+
                 if (response.ok) {
                     const healthInfo = `
                         Status: ${data.status}<br>

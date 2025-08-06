@@ -41,7 +41,7 @@ jobs:
       run: |
         # Convert repository name to lowercase
         IMAGE_NAME_LOWER=$(echo "${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
-        
+
         if [[ "${{ github.event_name }}" == "release" ]]; then
           # Release build - use the release tag
           RELEASE_TAG="${{ github.event.release.tag_name }}"
@@ -67,7 +67,7 @@ jobs:
           echo "Building PR version: ${VERSION}"
           BUILD_TYPE="development"
         fi
-        
+
         echo "tags=${TAGS}" >> $GITHUB_OUTPUT
         echo "version=${VERSION}" >> $GITHUB_OUTPUT
         echo "image-name=${IMAGE_NAME_LOWER}" >> $GITHUB_OUTPUT
@@ -103,7 +103,7 @@ jobs:
         echo "Version: ${{ steps.meta.outputs.version }}"
         echo "Build Type: ${{ steps.meta.outputs.build-type }}"
         echo "Triggered by: ${{ github.event_name }}"
-        
+
         if [[ "${{ github.event_name }}" == "release" ]]; then
           echo "Released to production from GitHub Release: ${{ github.event.release.tag_name }}"
         else
@@ -120,18 +120,18 @@ jobs:
             owner: context.repo.owner,
             repo: context.repo.repo,
             body: `## Docker Image Built
-            
+
             **Image:** \`${{ steps.meta.outputs.image-name }}\`
             **Version:** \`${{ steps.meta.outputs.version }}\`
             **Registry:** \`${{ env.REGISTRY }}\`
             **Branch:** \`${{ github.head_ref }}\`
             **PR:** \`#${{ github.event.number }}\`
-            
+
             Pull the image:
             \`\`\`bash
             docker pull ${{ steps.meta.outputs.tags }}
             \`\`\`
-            
+
             Deploy with Helm:
             \`\`\`bash
             helm upgrade --install ping-pong ./helm-charts/ping-pong \\
@@ -151,7 +151,7 @@ jobs:
         echo "**Build Type:** \`${{ steps.meta.outputs.build-type }}\`" >> $GITHUB_STEP_SUMMARY
         echo "**Triggered by:** \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        
+
         if [[ "${{ github.event_name }}" == "release" ]]; then
           echo "**GitHub Release:** \`${{ github.event.release.tag_name }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -160,7 +160,7 @@ jobs:
           echo "**Branch:** \`${{ github.head_ref }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
         fi
-        
+
         if [[ "${{ steps.meta.outputs.build-type }}" == "release" ]]; then
           echo "**Production Release** - Image available for production deployment" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

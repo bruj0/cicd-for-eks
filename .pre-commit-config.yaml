@@ -1,0 +1,136 @@
+# Pre-commit configuration for Ping-Pong Flask Application
+# This configuration runs the same tests as the Test Application workflow
+# Install with: pip install pre-commit && pre-commit install
+
+repos:
+  # Python code formatting with black
+  - repo: https://github.com/psf/black
+    rev: 24.8.0
+    hooks:
+      - id: black
+        name: Format Python code with black
+        language_version: python3
+        files: ^src/.*\.py$
+        args: [--line-length=127]
+
+  # Python linting with flake8
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.1.1
+    hooks:
+      - id: flake8
+        name: Lint Python code with flake8
+        files: ^src/.*\.py$
+        args: 
+          - --max-complexity=10
+          - --max-line-length=127
+          - --select=E9,F63,F7,F82  # Critical errors only for blocking
+          - --show-source
+          - --statistics
+
+  # Additional flake8 check for warnings (non-blocking)
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.1.1
+    hooks:
+      - id: flake8
+        name: Flake8 full check (warnings)
+        files: ^src/.*\.py$
+        args:
+          - --max-complexity=10
+          - --max-line-length=127
+          - --exit-zero  # Don't fail on warnings
+          - --statistics
+
+  # Python import sorting
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: Sort Python imports
+        files: ^src/.*\.py$
+        args: [--profile=black, --line-length=127]
+
+  # Security scanning with bandit
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        name: Security scan with bandit
+        files: ^src/.*\.py$
+        args: [-r, -f, json, -q]
+        # Continue on bandit warnings
+        verbose: true
+
+  # Dockerfile linting
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        name: Lint Dockerfile
+        files: ^src/Dockerfile$
+        args: [--ignore, DL3008, --ignore, DL3018, --ignore, DL3013]
+
+
+  # Helm chart linting for helm-charts only
+  - repo: local
+    hooks:
+      - id: helm-lint
+        name: Helm Lint
+        entry: bash
+        language: system
+        files: ^helm-charts/.*/Chart.yaml$
+        pass_filenames: false
+        args:
+          - -c
+          - |
+            for chart in helm-charts/*/Chart.yaml; do
+              chart_dir=$(dirname "$chart")
+              echo "Linting $chart_dir"
+              helm lint "$chart_dir"
+            done
+
+
+  # JSON validation
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-json
+        name: Validate JSON files
+
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+        name: Remove trailing whitespace
+      - id: end-of-file-fixer
+        name: Ensure files end with newline
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+      - id: check-added-large-files
+        name: Check for large files
+        args: [--maxkb=1000]
+
+  - repo: local
+    hooks:
+      - id: pytest-test
+        name: Run pytest unit tests
+        entry: bash
+        language: system
+        files: ^src/(main\.py|test_main\.py)$
+        args:
+          - -c
+          - |
+            cd src && python -m pytest test_main.py -v --tb=short
+        pass_filenames: false
+
+
+# Global pre-commit configuration
+default_language_version:
+  python: python3
+
+# Skip hooks for specific scenarios
+ci:
+  skip: [helm-chart-validation]  # Skip helm validation in CI if not needed
+
+# Minimum pre-commit version
+minimum_pre_commit_version: 3.0.0

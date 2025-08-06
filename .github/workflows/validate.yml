@@ -6,7 +6,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -21,112 +21,28 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install pytest flake8 black
+        pip install pre-commit
 
-    - name: Lint with flake8
+    - name: Run pre-commit hooks
+      run: |
+        # Install pre-commit hooks
+        pre-commit install
+
+        # Run all pre-commit hooks
+        pre-commit run --all-files
+
+    - name: Run pytest unit tests
       working-directory: ./src
       run: |
-        # Stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Exit-zero treats all errors as warnings
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-    - name: Format check with black
-      working-directory: ./src
-      run: |
-        black --check --diff .
-
-    - name: Test application
-      working-directory: ./src
-      run: |
-        # Basic import test
-        python -c "import main; print('Main module imports successfully')"
-        
-        # Test Flask app creation
-        python -c "
-        from main import create_app
-        app = create_app()
-        with app.test_client() as client:
-            # Test ping endpoint
-            response = client.get('/ping')
-            assert response.status_code == 200
-            assert response.get_json()['message'] == 'pong'
-            print('/ping endpoint works')
-            
-            # Test hello endpoint
-            response = client.post('/hello', json={'name': 'Test'})
-            assert response.status_code == 200
-            assert 'Hello Test' in response.get_json()['message']
-            print('/hello endpoint works')
-            
-            # Test health endpoint
-            response = client.get('/health')
-            assert response.status_code == 200
-            assert response.get_json()['status'] == 'healthy'
-            print('/health endpoint works')
-            
-            # Test home endpoint
-            response = client.get('/')
-            assert response.status_code == 200
-            print('/ (home) endpoint works')
-        
-        print('All tests passed!')
-        "
-
-    - name: Validate Dockerfile
-      working-directory: ./src
-      run: |
-        # Check if Dockerfile exists and has basic structure
-        if [ -f "Dockerfile" ]; then
-          echo "Dockerfile exists"
-          if grep -q "FROM python:" Dockerfile; then
-            echo "Uses Python base image"
-          fi
-          if grep -q "WORKDIR" Dockerfile; then
-            echo "Sets working directory"
-          fi
-          if grep -q "COPY requirements.txt" Dockerfile; then
-            echo "Copies requirements file"
-          fi
-          if grep -q "EXPOSE" Dockerfile; then
-            echo "Exposes port"
-          fi
-        else
-          echo "ERROR: Dockerfile not found"
-          exit 1
-        fi
-
-    - name: Validate Helm Chart
-      working-directory: ./helm-charts/ping-pong
-      run: |
-        # Install helm
-        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-        
-        # Validate chart syntax
-        helm lint .
-        
-        # Test template rendering
-        helm template test-release . --values values.yaml
-        
-        echo "Helm chart validation passed"
-
-    - name: Security scan
-      working-directory: ./src
-      run: |
-        # Install safety for dependency security scanning
-        pip install safety
-        
-        # Scan dependencies for known vulnerabilities
-        safety check --json || echo "WARNING: Security scan completed with warnings"
+        echo "Running pytest unit tests..."
+        python -m pytest test_main.py -v --tb=short
+        echo "All unit tests passed!"
 
     - name: Test Summary
       run: |
         echo "## Test Summary" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Code Quality**: Linting and formatting checks passed" >> $GITHUB_STEP_SUMMARY
-        echo "**Application Tests**: All endpoints responding correctly" >> $GITHUB_STEP_SUMMARY
-        echo "**Docker**: Dockerfile structure validated" >> $GITHUB_STEP_SUMMARY
-        echo "**Helm**: Chart syntax and templates validated" >> $GITHUB_STEP_SUMMARY
-        echo "**Security**: Dependency vulnerability scan completed" >> $GITHUB_STEP_SUMMARY
+        echo "**Pre-commit Hooks**: All code quality checks passed" >> $GITHUB_STEP_SUMMARY
+        echo "**Unit Tests**: All pytest tests passed" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Ready for deployment!**" >> $GITHUB_STEP_SUMMARY

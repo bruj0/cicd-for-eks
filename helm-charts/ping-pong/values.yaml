@@ -78,7 +78,7 @@ app:
   name: "ping-pong"
   port: 5000
   debug: false
-  
+
 # Environment variables
 env:
   - name: APP_NAME

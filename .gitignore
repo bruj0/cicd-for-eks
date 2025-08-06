@@ -8,4 +8,3 @@ wheels/
 tmp/
 # Virtual environments
 .venv
-Makefile

@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     permissions:
-      contents: read
+      contents: write
       packages: write
-      pull-requests: read
+      pull-requests: write
 
     steps:
     - name: Checkout repository
@@ -56,8 +56,7 @@ jobs:
           # Pull request build - use PR number and branch name
           BRANCH_NAME="${{ github.head_ref }}"
           PR_NUMBER="${{ github.event.number }}"
-          # Sanitize branch name and limit to 8 characters
-          BRANCH_CLEAN=$(echo "${BRANCH_NAME}" | sed 's/[^a-zA-Z0-9-]/-/g' | cut -c1-8)
+          BRANCH_CLEAN=$(echo "${BRANCH_NAME}" | sed 's/[^a-zA-Z0-9-]/-/g')
           # Use current timestamp as version for PR builds
           TIMESTAMP=$(date +%Y%m%d-%H%M%S)
           VERSION="pr-${PR_NUMBER}-${TIMESTAMP}"

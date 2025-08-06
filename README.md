@@ -198,44 +198,7 @@ Returns application health status for Kubernetes probes.
 The application includes a comprehensive CI/CD pipeline using GitHub Actions with multiple workflows:
 
 ### Workflows
-
-#### Main Pipeline (`build-test-deploy.yml`)
-- **Triggers**: Pull requests to main branch, published releases
-- **Features**:
-  - Runs validation tests
-  - Builds and pushes Docker images to GitHub Container Registry (GHCR)
-  - Deploys to EKS environments
-  - Supports both PR deployments and production releases
-
-#### Code Validation (`validate.yml`)
-- **Purpose**: Reusable workflow for testing and validation
-- **Includes**:
-  - Python dependency caching
-  - Code linting with flake8
-  - Code formatting check with black
-  - Automated testing with pytest
-  - Import sorting validation with isort
-
-#### Deployment (`deploy.yml`)
-- **Purpose**: Kubernetes deployment to EKS
-- **Features**:
-  - Environment-specific deployments (dev/prod)
-  - Kubectl configuration from secrets
-  - Helm chart deployment
-  - Health check validation
-
-#### Environment Management
-- **`call-deploy.yml`**: Orchestrates deployment calls
-- **`cleanup-pr-deployments.yml`**: Cleans up PR-specific deployments
-
-### Container Registry
-
-The pipeline uses GitHub Container Registry (GHCR) for Docker image storage:
-- **Registry**: `ghcr.io`
-- **Image naming**: `ghcr.io/bruj0/cicd-for-eks/ping-pong`
-- **Tagging**: Supports both PR-specific tags and release tags
-
-## GitHub Workflow Diagram
+#### GitHub Workflow Diagram
 
 The following diagram illustrates how the GitHub Actions workflows interact with each other:
 
@@ -298,6 +261,43 @@ flowchart TD
     style DevCluster fill:#e3f2fd
     style TargetCluster fill:#f3e5f5
 ```
+
+#### Main Pipeline (`build-test-deploy.yml`)
+- **Triggers**: Pull requests to main branch, published releases
+- **Features**:
+  - Runs validation tests
+  - Builds and pushes Docker images to GitHub Container Registry (GHCR)
+  - Deploys to EKS environments
+  - Supports both PR deployments and production releases
+
+#### Code Validation (`validate.yml`)
+- **Purpose**: Reusable workflow for testing and validation
+- **Includes**:
+  - Python dependency caching
+  - Code linting with flake8
+  - Code formatting check with black
+  - Automated testing with pytest
+  - Import sorting validation with isort
+
+#### Deployment (`deploy.yml`)
+- **Purpose**: Kubernetes deployment to EKS
+- **Features**:
+  - Environment-specific deployments (dev/prod)
+  - Kubectl configuration from secrets
+  - Helm chart deployment
+  - Health check validation
+
+#### Environment Management
+- **`call-deploy.yml`**: Orchestrates deployment calls
+- **`cleanup-pr-deployments.yml`**: Cleans up PR-specific deployments
+
+### Container Registry
+
+The pipeline uses GitHub Container Registry (GHCR) for Docker image storage:
+- **Registry**: `ghcr.io`
+- **Image naming**: `ghcr.io/bruj0/cicd-for-eks/ping-pong`
+- **Tagging**: Supports both PR-specific tags and release tags
+
 
 ### Workflow Interaction Details
 

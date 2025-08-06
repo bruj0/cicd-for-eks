@@ -1,0 +1,37 @@
+name: Test Deploy Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      image-tag:
+        description: 'Docker image tag to deploy'
+        required: false
+        default: 'latest'
+        type: string
+      build-type:
+        description: 'Build type (release or development)'
+        required: false
+        default: 'development'
+        type: string
+      branch-name:
+        description: 'Branch name for namespace (for dev builds)'
+        required: false
+        default: 'test-branch'
+        type: string
+      pr-number:
+        description: 'PR number for development builds'
+        required: false
+        default: '123'
+        type: string
+
+jobs:
+  call-deploy:
+    uses: ./.github/workflows/deploy.yml
+    with:
+      image-tag: ${{ github.event.inputs.image-tag }}
+      build-type: ${{ github.event.inputs.build-type }}
+      branch-name: ${{ github.event.inputs.branch-name }}
+      pr-number: ${{ github.event.inputs.pr-number }}
+    secrets:
+      GHCR_PAT: ${{ secrets.GHCR_PAT }}
+      KUBECONFIG: ${{ secrets.KUBECONFIG }}

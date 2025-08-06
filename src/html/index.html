@@ -257,7 +257,8 @@
                     const healthInfo = `
                         Status: ${data.status}<br>
                         Timestamp: ${data.timestamp}<br>
-                        App: ${data.app}
+                        App: ${data.service} <br>
+                        Version: ${data.version}<br>
                     `;
                     displayResponse('health-response', healthInfo);
                 } else {

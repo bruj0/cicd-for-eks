@@ -48,9 +48,9 @@ jobs:
         version: '3.13.0'
 
     - name: Setup kubectl
-      uses: azure/setup-kubectl@v3
+      uses: azure/setup-kubectl@v4
       with:
-        version: '1.28.0'
+        version: 'v1.31.0'
 
     - name: Configure kubectl
       run: |

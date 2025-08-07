@@ -37,6 +37,9 @@ env:
   - name: ENVIRONMENT
     value: "development"
 
+podAnnotations:
+  instrumentation.opentelemetry.io/inject-python: "true"
+
 # ALB configuration for development
 # The ALB will provide its own hostname automatically
 ingress:

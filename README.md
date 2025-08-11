@@ -3,6 +3,8 @@
 This application is created in Python and is meant to test the CICD pipeline to EKS.
 It's a simple Flask application that responds to HTTP requests.
 
+## Infraestructure
+To create the infraestructure use this repo:  https://github.com/bruj0/infra-for-eks
 ## Features
 
 - **GET /ping** - Health check endpoint that responds with "pong"

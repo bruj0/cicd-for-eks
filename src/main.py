@@ -50,9 +50,9 @@ def create_app():
             else:
                 return 400
 
-          except Exception as e:
-            logger.error(f"Error processing hello request: {str(e)}")
-            return jsonify({"error": "Internal server error"}), 500
+         except Exception as e:
+             logger.error(f"Error processing hello request: {str(e)}")
+             return jsonify({"error": "Internal server error"}), 500
         
     @app.route("/hello", methods=["POST"])
     def hello():

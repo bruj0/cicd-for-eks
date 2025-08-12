@@ -4,15 +4,6 @@
 
 repos:
   # Python code formatting with black
-  - repo: https://github.com/psf/black
-    rev: 24.8.0
-    hooks:
-      - id: black
-        name: Format Python code with black
-        language_version: python3
-        files: ^src/.*\.py$
-        args: [--line-length=127]
-
   # Python linting with flake8
   - repo: https://github.com/pycqa/flake8
     rev: 7.1.1

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Ping-Pong Flask Application
-A simple Flask application for testing CICD pipeline to EKS.
+A simple Flask application for testing CICD pipeline to EKS.v2
 """
 
 import logging
@@ -39,6 +39,19 @@ def create_app():
         logger.info("Ping endpoint accessed")
         return jsonify({"message": "pong"})
 
+    @app.route("/iseven", methods=["POST"])
+    def iseven():
+        logger.info("Iseven endpoint accessed")
+        try:
+            data = request.get_json()
+            number = data["number"]
+            if number % 2 == 0:
+                return 200
+            else:
+                return 400
+        except Exception as e:
+            logger.error(f"Error processing hello request: {str(e)}")
+            return jsonify({"error": "Internal server error"}), 500
     @app.route("/hello", methods=["POST"])
     def hello():
         """

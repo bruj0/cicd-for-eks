@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Ping-Pong Flask Application
-A simple Flask application for testing CICD pipeline to EKS.
+A simple Flask application for testing CICD pipeline to EKS.v2
 """
 
 import logging

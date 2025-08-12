@@ -47,7 +47,7 @@ def create_app():
             number = data["number"]
             if number % 2 == 0:
                 return 200
-            else
+            else:
                 return 400
 
           except Exception as e:
